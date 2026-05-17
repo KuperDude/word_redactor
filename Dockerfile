@@ -1,16 +1,27 @@
-FROM alpine:latest
+FROM archlinux:latest
 
-# Устанавливаем необходимые пакеты
-RUN apk add --no-cache bash perl zip unzip sed coreutils
+# Обновляем систему и устанавливаем базовые зависимости
+RUN pacman -Syu --noconfirm && \
+    pacman -S --noconfirm \
+        tmux \
+        unzip \
+        zip \
+        perl \
+        sed \
+        procps-ng \
+        git \
+	doxx \
+        base-devel \
+        rust \
+        cargo
 
-# Создаём рабочую директорию
+# Очистка кэша pacman
+RUN pacman -Scc --noconfirm
+
+# Рабочая директория (монтируется с хоста)
 WORKDIR /app
 
-# Копируем скрипт (он должен лежать в scripts/letter_generator.sh)
-COPY scripts/letter_generator.sh /app/letter_generator.sh
+# Создаём папки для монтирования
+RUN mkdir -p scripts templates outputs
 
-# Делаем исполняемым
-RUN chmod +x /app/letter_generator.sh
-
-# Точка входа
-ENTRYPOINT ["/app/letter_generator.sh"]
+CMD ["bash"]
