@@ -1,5 +1,5 @@
 #!/bin/bash
-# letter_generator_live.sh – генерация DOCX с обновлением preview после каждого действия
+# letter_generator_live.sh – generate DOCX with preview update after each action
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATE_DIR="$SCRIPT_DIR/../templates"
@@ -14,7 +14,7 @@ declare -a APP_PAGES
 declare -A placeholder_values
 
 # -------------------------------------------------------------------
-# Вспомогательные функции (без изменений)
+# Helper functions (unchanged)
 # -------------------------------------------------------------------
 xml_escape() {
     local s="$1"
@@ -27,7 +27,7 @@ xml_escape() {
 }
 
 select_template() {
-    echo "Выберите файл шаблона (.docx):" >&2
+    echo "Select template file (.docx):" >&2
     local templates=()
     if [ -d "$TEMPLATE_DIR" ]; then
         while IFS= read -r file; do
@@ -35,17 +35,17 @@ select_template() {
         done < <(find "$TEMPLATE_DIR" -maxdepth 1 -name "*.docx" -type f | sort)
     fi
     if [ ${#templates[@]} -eq 0 ]; then
-        echo "Ошибка: Нет .docx файлов в $TEMPLATE_DIR" >&2
+        echo "Error: No .docx files in $TEMPLATE_DIR" >&2
         exit 1
     fi
     for i in "${!templates[@]}"; do
         echo "  $((i+1))) $(basename "${templates[$i]}")" >&2
     done
-    read -p "Выберите номер [1-${#templates[@]}]: " choice >&2
+    read -p "Select number [1-${#templates[@]}]: " choice >&2
     if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#templates[@]} ]; then
         TEMPLATE_FILE="${templates[$((choice-1))]}"
     else
-        echo "Неверный выбор!" >&2
+        echo "Invalid choice!" >&2
         exit 1
     fi
 }
@@ -71,7 +71,7 @@ generate_appendices_bodies() {
         local title="${APP_TITLES[$i]}"
         local text="${APP_TEXTS[$i]}"
         bodies="$bodies<w:p><w:r><w:br w:type=\"page\"/></w:r></w:p>"
-        bodies="$bodies<w:p><w:pPr><w:jc w:val=\"right\"/></w:pPr><w:r><w:t>Приложение $num</w:t></w:r></w:p>"
+        bodies="$bodies<w:p><w:pPr><w:jc w:val=\"right\"/></w:pPr><w:r><w:t>Appendix $num</w:t></w:r></w:p>"
         bodies="$bodies<w:p><w:pPr><w:jc w:val=\"center\"/></w:pPr><w:r><w:rPr><w:b/></w:rPr><w:t>$(xml_escape "$title")</w:t></w:r></w:p>"
         IFS=$'\n' read -rd '' -a lines <<< "$text"
         for line in "${lines[@]}"; do
@@ -87,15 +87,15 @@ replace_appendices_list() {
         sed -i 's/{APPENDICES}//g' "$document_xml"
         return
     fi
-    local header_text="Приложения:"
-    [ ${#APP_TITLES[@]} -eq 1 ] && header_text="Приложение:"
+    local header_text="Appendices:"
+    [ ${#APP_TITLES[@]} -eq 1 ] && header_text="Appendix:"
     local items_xml='<w:p><w:r><w:rPr><w:b/></w:rPr><w:t>'$(xml_escape "$header_text")'</w:t></w:r></w:p>'
     for ((i=0; i<${#APP_TITLES[@]}; i++)); do
         local num=$((i+1))
         local title="${APP_TITLES[$i]}"
         local pages="${APP_PAGES[$i]}"
         local line="${num}. ${title}"
-        [ -n "$pages" ] && [ "$pages" != "" ] && line="${line} на ${pages} л."
+        [ -n "$pages" ] && [ "$pages" != "" ] && line="${line} on ${pages} p."
         items_xml="$items_xml"$'\n'"<w:p><w:r><w:t>$(xml_escape "$line")</w:t></w:r></w:p>"
     done
     local items_escaped=$(echo "$items_xml" | sed ':a;N;$!ba;s/\n/\\n/g')
@@ -104,7 +104,7 @@ replace_appendices_list() {
     elif sed --version 2>/dev/null | grep -q GNU; then
         sed -i -z 's#<w:p>[^<]*{APPENDICES}[^<]*</w:p>#'"$items_escaped"'#g' "$document_xml"
     else
-        echo "Ошибка: нужен perl или GNU sed" >&2
+        echo "Error: need perl or GNU sed" >&2
         exit 1
     fi
 }
@@ -115,13 +115,13 @@ append_app_bodies() {
     if grep -q "</w:body>" "$document_xml"; then
         sed -i "s|</w:body>|${bodies_xml}\n</w:body>|" "$document_xml"
     else
-        echo "Ошибка: не найден </w:body>" >&2
+        echo "Error: </w:body> not found" >&2
         exit 1
     fi
 }
 
 # --------------------------------------------------------------
-# Генерация в заданный файл
+# Generate to given file
 # --------------------------------------------------------------
 build_docx_to_file() {
     local output_file="$1"
@@ -144,15 +144,15 @@ build_docx_to_file() {
 
     (cd "$temp_dir" && zip -qr "$output_file" .) || { rm -rf "$temp_dir"; return 1; }
     rm -rf "$temp_dir"
-    echo "Сгенерирован: $output_file" >&2
+    echo "Generated: $output_file" >&2
 }
 
 # --------------------------------------------------------------
-# Ввод приложений с обновлением preview
+# Input appendices with live preview update
 # --------------------------------------------------------------
 input_applications_live() {
     echo >&2
-    read -p "Сколько приложений добавить? (0 если без): " app_count >&2
+    read -p "How many appendices to add? (0 if none): " app_count >&2
     if ! [[ "$app_count" =~ ^[0-9]+$ ]]; then
         app_count=0
     fi
@@ -161,16 +161,16 @@ input_applications_live() {
     fi
     for ((i=1; i<=app_count; i++)); do
         echo >&2
-        echo "--- Приложение $i ---" >&2
-        read -p "Заголовок: " title >&2
+        echo "--- Appendix $i ---" >&2
+        read -p "Title: " title >&2
         APP_TITLES+=("$title")
-        build_docx_to_file "$LIVE_FILE"  # обновление после заголовка
+        build_docx_to_file "$LIVE_FILE"  # update after title
 
-        read -p "Количество страниц (ENTER если не нужно): " pages >&2
+        read -p "Number of pages (ENTER if not needed): " pages >&2
         APP_PAGES+=("$pages")
-        build_docx_to_file "$LIVE_FILE"  # обновление после страниц
+        build_docx_to_file "$LIVE_FILE"  # update after pages
 
-        echo "Текст приложения (пустая строка - конец):" >&2
+        echo "Appendix text (empty line - end):" >&2
         local text=""
         local line_num=1
         while true; do
@@ -180,19 +180,19 @@ input_applications_live() {
             fi
             text="${text}${line}\n"
             ((line_num++))
-            build_docx_to_file "$LIVE_FILE"  # обновление после каждой строки
+            build_docx_to_file "$LIVE_FILE"  # update after each line
         done
         APP_TEXTS+=("$text")
-        build_docx_to_file "$LIVE_FILE"  # финальное обновление после приложения
+        build_docx_to_file "$LIVE_FILE"  # final update after appendix
     done
 }
 
 # --------------------------------------------------------------
-# Ввод плейсхолдеров с обновлением preview
+# Input placeholders with live preview update
 # --------------------------------------------------------------
 input_placeholders_live() {
     local placeholders=("$@")
-    # Инициализация пустыми значениями
+    # Initialize with empty values
     for ph in "${placeholders[@]}"; do
         if [ "$ph" != "{APPENDICES}" ]; then
             placeholder_values["$ph"]=" "
@@ -211,29 +211,29 @@ input_placeholders_live() {
         fi
         placeholder_values["$placeholder"]="$value"
         build_docx_to_file "$LIVE_FILE"
-        echo "→ Обновлён превью-файл" >&2
+        echo "→ Preview file updated" >&2
     done
 }
-
+ 
 # --------------------------------------------------------------
-# Сохранение финальной версии
+# Save final version
 # --------------------------------------------------------------
 save_final() {
-    read -p "Сохранить финальную версию? (y/n): " answer >&2
+    read -p "Save final version? (y/n): " answer >&2
     if [[ "$answer" =~ ^[Yy]$ ]]; then
-        read -p "Имя выходного файла (без расширения): " final_name >&2
+        read -p "Output file name (without extension): " final_name >&2
         [ -z "$final_name" ] && final_name="output_$(date +%Y%m%d_%H%M%S)"
         final_name="${final_name}.docx"
         final_path="$OUTPUT_DIR/$final_name"
         cp "$LIVE_FILE" "$final_path"
-        echo "Финальная версия сохранена: $final_path" >&2
+        echo "Final version saved: $final_path" >&2
     else
-        echo "Превью-файл остался: $LIVE_FILE" >&2
+        echo "Preview file remains: $LIVE_FILE" >&2
     fi
 }
 
 # --------------------------------------------------------------
-# Основной блок
+# Main block
 # --------------------------------------------------------------
 select_template
 
@@ -244,7 +244,7 @@ for ph in "${all_placeholders[@]}"; do
     fi
 done
 build_docx_to_file "$LIVE_FILE"
-echo "→ Превью показывает выбранный шаблон" >&2
+echo "→ Preview shows selected template" >&2
 
 mapfile -t placeholders < <(extract_placeholders "$TEMPLATE_FILE")
 input_applications_live
