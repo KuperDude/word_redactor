@@ -1,4 +1,4 @@
-FROM archlinux:latest
+FROM archlinux:base
 
 # Обновляем систему и устанавливаем базовые зависимости
 RUN pacman -Syu --noconfirm && \
@@ -6,14 +6,10 @@ RUN pacman -Syu --noconfirm && \
         tmux \
         unzip \
         zip \
-        perl \
         sed \
         procps-ng \
-        git \
-	doxx \
-        base-devel \
-        rust \
-        cargo
+	perl \
+	doxx 
 
 # Очистка кэша pacman
 RUN pacman -Scc --noconfirm
