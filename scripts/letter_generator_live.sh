@@ -71,7 +71,7 @@ generate_appendices_bodies() {
         local title="${APP_TITLES[$i]}"
         local text="${APP_TEXTS[$i]}"
         bodies="$bodies<w:p><w:r><w:br w:type=\"page\"/></w:r></w:p>"
-        bodies="$bodies<w:p><w:pPr><w:jc w:val=\"right\"/></w:pPr><w:r><w:t>Приложение $num</w:t></w:r></w:p>"
+        bodies="$bodies<w:p><w:pPr><w:jc w:val=\"right\"/></w:pPr><w:r><w:t>Appendix $num</w:t></w:r></w:p>"
         bodies="$bodies<w:p><w:pPr><w:jc w:val=\"center\"/></w:pPr><w:r><w:rPr><w:b/></w:rPr><w:t>$(xml_escape "$title")</w:t></w:r></w:p>"
         IFS=$'\n' read -rd '' -a lines <<< "$text"
         for line in "${lines[@]}"; do
@@ -87,15 +87,15 @@ replace_appendices_list() {
         sed -i 's/{APPENDICES}//g' "$document_xml"
         return
     fi
-    local header_text="Приложения:"
-    [ ${#APP_TITLES[@]} -eq 1 ] && header_text="Приложение:"
+    local header_text="Appendices:"
+    [ ${#APP_TITLES[@]} -eq 1 ] && header_text="Appendix:"
     local items_xml='<w:p><w:r><w:rPr><w:b/></w:rPr><w:t>'$(xml_escape "$header_text")'</w:t></w:r></w:p>'
     for ((i=0; i<${#APP_TITLES[@]}; i++)); do
         local num=$((i+1))
         local title="${APP_TITLES[$i]}"
         local pages="${APP_PAGES[$i]}"
         local line="${num}. ${title}"
-        [ -n "$pages" ] && [ "$pages" != "" ] && line="${line} на ${pages} лист."
+        [ -n "$pages" ] && [ "$pages" != "" ] && line="${line} on ${pages} p."
         items_xml="$items_xml"$'\n'"<w:p><w:r><w:t>$(xml_escape "$line")</w:t></w:r></w:p>"
     done
     local items_escaped=$(echo "$items_xml" | sed ':a;N;$!ba;s/\n/\\n/g')
